@@ -27,33 +27,43 @@ const typeDefs = gql`
   input UserInput {
     email: String!
     password: String!
+    userName: String
+    position: String
+    experience: String
   }
   type UserLogged {
-    token: String!
+    token: String
     email: String!
+    userName: String
+    position: String
+    experience: String
+
   }
   type Employee {
     id : ID!
     firstName: String!
     lastName: String!
-    phoneNumber: String!
+    projet: String!
     position: String
   }
   input EmployeeInput{
-    id : ID!
+    id : ID
     firstName: String!
     lastName: String!
-    phoneNumber: String!
+    projet: String!
     position: String
   }
   type Query {
     employees: [Employee]
     employee(id: ID!) : Employee
+    me: UserLogged
   }
   type Mutation {
     register(input: UserInput): UserLogged
     login(input: UserInput): UserLogged
     addEmploye(input: EmployeeInput) : Employee
+    updateEmploye(input: EmployeeInput): Employee
+    removeEmploye(id: ID!,): Boolean
   }
 
 `;
@@ -64,12 +74,13 @@ const resolvers = {
   Query: {
     employees: async (_, $, { models }) => {
       const employee = await models.Employee.find();
-      console.log('employe', employee);
+      // console.log('employe', employee);
       await setTimeout(() => {
         // console.log('toto');
       }, 7000);
       return employee;
     },
+    me: (_, $, { models, userId }) => models.User.findOne({ _id: userId }),
     employee: (_, { id }, { models }) => models.Employee.findOne({ _id: id }),
   },
   Mutation: {// User save as a model.user
@@ -78,13 +89,16 @@ const resolvers = {
       const user = new models.User({
         email: input.email,
         password: hashPassword,
+        userName: input.userName,
+        position: input.position,
+        experience: input.experience,
       });
       await user.save();
       const token = generateToken(user.id, user.email);
-      return { token, email: user.email };
+      return { token, email: user.email, userName: user.userName, position: user.position, experience: user.experience };
     },
     login: async (_, { input }, { models }) => {
-      console.log(input);
+      // console.log(input);
       const currentUser = await models.User.findOne({ email: input.email });
       if (!currentUser) {
         throw new Error('User not found');
@@ -101,12 +115,24 @@ const resolvers = {
       const newUser = new models.Employee({
         firstName: input.firstName,
         lastName: input.lastName,
-        phoneNumber: input.phoneNumber,
+        projet: input.projet,
         position: input.position,
       });
       const UserAdded = await newUser.save();
       // console.log('UserAdded', UserAdded);
       return UserAdded;
+    },
+    updateEmploye: async (_,{input: { id, firstName, lastName, projet, position }}) => {
+      console.log(id, firstName);
+      const utilisateur = await Employee.findOneAndUpdate({ _id: id }, {
+        $set: { firstName, lastName, projet, position } });
+      console.log(utilisateur);
+      return utilisateur;
+
+    },
+    removeEmploye: async (_, { id }) => {
+      await Employee.findByIdAndRemove(id);
+      return true;
     },
 
   },
